@@ -12,7 +12,15 @@ module Sprockets::Vue
           CoffeeScript.compile(s, sourceMap: true, sourceFiles: [input[:source_path]], no_wrap: true)
         },
         'es6' => ->(s, input){
-          Babel::Transpiler.transform(data, {}) #TODO
+          res = Sprockets::ES6.new.transform(s, {
+            'modules' => 'amd',
+            'moduleIds' => true,
+            'moduleId' => input[:name]
+          })
+          {
+            'js' =>  res['code'],
+            'sourceMap' => res['map']
+          }
         },
         nil => ->(s,input){ { 'js' => s } }
       }
@@ -22,28 +30,20 @@ module Sprockets::Vue
         input[:cache].fetch([cache_key, input[:source_path], data]) do
           script = SCRIPT_REGEX.match(data)
           template = TEMPLATE_REGEX.match(data)
-          output = []
+          output = ''
           map = nil
           if script
             result = SCRIPT_COMPILES[script[:lang]].call(script[:content], input)
-            
             map = result['sourceMap']
-
-            output << "'object' != typeof VComponents && (this.VComponents = {});
-              var module = { exports: null };
-              #{result['js']}; VComponents['#{name}'] = module.exports;"
+            output = result['js']
           end
 
           if template
-            output << "VComponents['#{name.sub(/\.tpl$/, "")}'].template = '#{j template[:content]}';"
+            output = output[0..-4] + "  module.exports.template = '#{j template[:content]}';\n});"
           end
 
-          { data: "#{warp(output.join)}", map: map }
+          { data: output, map: map }
         end
-      end
-
-      def warp(s)
-        "(function(){#{s}}).call(this);"
       end
 
       def cache_key
