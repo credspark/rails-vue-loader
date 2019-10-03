@@ -39,7 +39,7 @@ module Sprockets::Vue
           end
 
           if template
-            output = output[0..-4] + "  module.exports.template = '#{j template[:content]}';\n});"
+            output = output[0..-4] + "  module.exports.template = '#{j template[:content].strip}';\n});"
           end
 
           { data: output, map: map }
